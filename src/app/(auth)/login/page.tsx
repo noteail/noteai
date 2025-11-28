@@ -38,7 +38,8 @@ export default function LoginPage() {
       localStorage.setItem("bearer_token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      router.push("/dashboard");
+      // Use window.location for redirect (works better in iframe)
+      window.location.href = "/dashboard";
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
