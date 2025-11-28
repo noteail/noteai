@@ -58,6 +58,15 @@ const categoryIcons: Record<string, React.ElementType> = {
   search: Search,
 };
 
+// Helper function to get auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bearer_token") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserData | null>(null);
@@ -72,21 +81,46 @@ export default function DashboardPage() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiSelectedText, setAISelectedText] = useState("");
 
-  // Fetch user data
+  // Check authentication and get user data
   useEffect(() => {
-    const fetchUser = async () => {
+    const token = localStorage.getItem("bearer_token");
+    const storedUser = localStorage.getItem("user");
+    
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    if (storedUser) {
       try {
-        const response = await fetch("/api/auth/me");
+        setUser(JSON.parse(storedUser));
+      } catch {
+        // If parsing fails, fetch from API
+      }
+    }
+
+    // Verify token is still valid
+    const verifyToken = async () => {
+      try {
+        const response = await fetch("/api/auth/me", {
+          headers: getAuthHeaders(),
+        });
         if (response.ok) {
           const data = await response.json();
           setUser(data.user);
+          localStorage.setItem("user", JSON.stringify(data.user));
+        } else {
+          // Token invalid, redirect to login
+          localStorage.removeItem("bearer_token");
+          localStorage.removeItem("user");
+          router.push("/login");
         }
       } catch (error) {
-        console.error("Failed to fetch user:", error);
+        console.error("Failed to verify token:", error);
       }
     };
-    fetchUser();
-  }, []);
+    verifyToken();
+  }, [router]);
 
   // Fetch notes based on filter
   const fetchNotes = useCallback(async () => {
@@ -115,7 +149,9 @@ export default function DashboardPage() {
         url += `?${params.toString()}`;
       }
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
       if (response.ok) {
         const data = await response.json();
         setNotes(data.notes);
@@ -132,8 +168,8 @@ export default function DashboardPage() {
     const fetchCategoriesAndTags = async () => {
       try {
         const [categoriesRes, tagsRes] = await Promise.all([
-          fetch("/api/categories"),
-          fetch("/api/tags"),
+          fetch("/api/categories", { headers: getAuthHeaders() }),
+          fetch("/api/tags", { headers: getAuthHeaders() }),
         ]);
 
         if (categoriesRes.ok) {
@@ -168,9 +204,13 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { 
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      localStorage.removeItem("bearer_token");
+      localStorage.removeItem("user");
       router.push("/login");
-      router.refresh();
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -180,7 +220,7 @@ export default function DashboardPage() {
     try {
       const response = await fetch("/api/notes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           title: "Untitled Note",
           content: "",
@@ -204,7 +244,7 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/notes/${updatedNote.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           title: updatedNote.title,
           content: updatedNote.content,
@@ -228,6 +268,7 @@ export default function DashboardPage() {
     try {
       await fetch(`/api/notes/${noteId}?permanent=${permanent}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
       if (selectedNote?.id === noteId) {
         setSelectedNote(null);

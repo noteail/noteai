@@ -48,8 +48,11 @@ export default function RegisterPage() {
         return;
       }
 
+      // Store token in localStorage
+      localStorage.setItem("bearer_token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
@@ -90,6 +93,7 @@ export default function RegisterPage() {
                   onChange={(e) => setName(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 
@@ -103,6 +107,7 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 
@@ -116,6 +121,7 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 
@@ -129,6 +135,7 @@ export default function RegisterPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 

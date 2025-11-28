@@ -16,8 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (loginEmail: string, loginPassword: string) => {
     setError("");
     setIsLoading(true);
 
@@ -25,7 +24,7 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
       const data = await response.json();
@@ -35,8 +34,11 @@ export default function LoginPage() {
         return;
       }
 
+      // Store token in localStorage
+      localStorage.setItem("bearer_token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
@@ -44,33 +46,15 @@ export default function LoginPage() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleLogin(email, password);
+  };
+
   const handleDemoLogin = async () => {
     setEmail("demo@notesai.com");
     setPassword("demo123");
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "demo@notesai.com", password: "demo123" }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "Login failed");
-        return;
-      }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    await handleLogin("demo@notesai.com", "demo123");
   };
 
   return (
@@ -106,6 +90,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 
@@ -119,6 +104,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
+                  autoComplete="off"
                 />
               </div>
 

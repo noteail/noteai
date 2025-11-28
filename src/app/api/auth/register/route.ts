@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { createSessionCookie } from "@/lib/auth";
+import { createSessionToken } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,11 +30,12 @@ export async function POST(request: NextRequest) {
     db.createCategory({ name: "Work", color: "#f59e0b", icon: "briefcase", userId: user.id });
     db.createCategory({ name: "Ideas", color: "#10b981", icon: "lightbulb", userId: user.id });
 
-    // Create session
-    await createSessionCookie(user.id);
+    // Create session token
+    const token = createSessionToken(user.id);
 
     return NextResponse.json({
       success: true,
+      token,
       user: {
         id: user.id,
         email: user.email,

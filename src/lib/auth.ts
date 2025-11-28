@@ -1,59 +1,47 @@
-import { cookies } from "next/headers";
 import { db, User } from "./db";
 
-const SESSION_COOKIE_NAME = "notesai_session";
-
 export async function getSession(): Promise<{ user: User } | null> {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  // This function is now only used server-side for checking auth via headers
+  return null;
+}
 
-  if (!sessionId) {
-    return null;
-  }
+export function createSessionToken(userId: number): string {
+  const session = db.createSession(userId);
+  return session.id;
+}
 
-  const session = db.findSession(sessionId);
+export function deleteSessionToken(sessionId: string): void {
+  db.deleteSession(sessionId);
+}
+
+export function getUserFromToken(token: string): User | null {
+  const session = db.findSession(token);
   if (!session) {
     return null;
   }
 
   const user = db.findUserById(session.userId);
-  if (!user) {
-    return null;
+  return user || null;
+}
+
+export function getTokenFromRequest(request: Request): string | null {
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.substring(7);
   }
-
-  return { user };
+  return null;
 }
 
-export async function createSessionCookie(userId: number): Promise<string> {
-  const session = db.createSession(userId);
-  const cookieStore = await cookies();
-  
-  cookieStore.set(SESSION_COOKIE_NAME, session.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    expires: session.expiresAt,
-    path: "/",
-  });
-
-  return session.id;
-}
-
-export async function deleteSessionCookie(): Promise<void> {
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-
-  if (sessionId) {
-    db.deleteSession(sessionId);
-  }
-
-  cookieStore.delete(SESSION_COOKIE_NAME);
-}
-
-export async function requireAuth(): Promise<User> {
-  const session = await getSession();
-  if (!session) {
+export async function requireAuth(request: Request): Promise<User> {
+  const token = getTokenFromRequest(request);
+  if (!token) {
     throw new Error("Unauthorized");
   }
-  return session.user;
+  
+  const user = getUserFromToken(token);
+  if (!user) {
+    throw new Error("Unauthorized");
+  }
+  
+  return user;
 }

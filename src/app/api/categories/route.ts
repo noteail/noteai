@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getTokenFromRequest, getUserFromToken } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const token = getTokenFromRequest(request);
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const categories = db.getCategoriesByUser(session.user.id);
+    const user = getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const categories = db.getCategoriesByUser(user.id);
     return NextResponse.json({ categories });
   } catch (error) {
     console.error("Get categories error:", error);
@@ -22,8 +27,13 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session) {
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -40,7 +50,7 @@ export async function POST(request: NextRequest) {
       name,
       color: color || "#6366f1",
       icon: icon || "folder",
-      userId: session.user.id,
+      userId: user.id,
     });
 
     return NextResponse.json({ category });

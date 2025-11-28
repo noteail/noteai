@@ -1,20 +1,26 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getTokenFromRequest, getUserFromToken } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const token = getTokenFromRequest(request);
 
-    if (!session) {
+    if (!token) {
+      return NextResponse.json({ user: null }, { status: 401 });
+    }
+
+    const user = getUserFromToken(token);
+
+    if (!user) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
     return NextResponse.json({
       user: {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        avatar: session.user.avatar,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
