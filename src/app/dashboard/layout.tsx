@@ -1,16 +1,9 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
-
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-
-  if (!session) {
-    redirect("/login");
-  }
-
+  // Authentication is handled client-side in the dashboard page
+  // using bearer tokens stored in localStorage
   return <>{children}</>;
 }
