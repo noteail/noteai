@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Bold,
   Italic,
@@ -18,6 +20,8 @@ import {
   Folder,
   Tag,
   Check,
+  Eye,
+  Edit3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,11 +61,13 @@ export function NoteEditor({
   const [content, setContent] = useState(note.content);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isTagOpen, setIsTagOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"edit" | "preview">("edit");
 
   // Update local state when note changes
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
+    setViewMode("edit"); // Reset to edit mode when switching notes
   }, [note.id, note.title, note.content]);
 
   // Debounced auto-save
@@ -152,46 +158,74 @@ export function NoteEditor({
     <div className="flex flex-col h-full">
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-4 py-2 border-b bg-muted/30 flex-wrap">
-        <div className="flex items-center gap-1 mr-2">
-          <ToolbarButton icon={Bold} onClick={() => insertMarkdown("**", "**")} title="Bold" />
-          <ToolbarButton icon={Italic} onClick={() => insertMarkdown("*", "*")} title="Italic" />
-          <ToolbarButton icon={Code} onClick={() => insertMarkdown("`", "`")} title="Inline Code" />
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg mr-2">
+          <Button
+            variant={viewMode === "edit" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("edit")}
+            className="h-7 px-3 text-xs"
+          >
+            <Edit3 className="w-3.5 h-3.5 mr-1.5" />
+            Edit
+          </Button>
+          <Button
+            variant={viewMode === "preview" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("preview")}
+            className="h-7 px-3 text-xs"
+          >
+            <Eye className="w-3.5 h-3.5 mr-1.5" />
+            Preview
+          </Button>
         </div>
         
         <div className="w-px h-6 bg-border mx-1" />
-        
-        <div className="flex items-center gap-1 mr-2">
-          <ToolbarButton icon={Heading1} onClick={() => insertMarkdown("# ")} title="Heading 1" />
-          <ToolbarButton icon={Heading2} onClick={() => insertMarkdown("## ")} title="Heading 2" />
-          <ToolbarButton icon={Heading3} onClick={() => insertMarkdown("### ")} title="Heading 3" />
-        </div>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <div className="flex items-center gap-1 mr-2">
-          <ToolbarButton icon={List} onClick={() => insertMarkdown("- ")} title="Bullet List" />
-          <ToolbarButton icon={ListOrdered} onClick={() => insertMarkdown("1. ")} title="Numbered List" />
-          <ToolbarButton icon={Quote} onClick={() => insertMarkdown("> ")} title="Quote" />
-        </div>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <div className="flex items-center gap-1 mr-2">
-          <ToolbarButton icon={Link} onClick={() => insertMarkdown("[", "](url)")} title="Link" />
-          <ToolbarButton icon={Image} onClick={() => insertMarkdown("![alt](", ")")} title="Image" />
-        </div>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => insertMarkdown("```\n", "\n```")}
-          className="text-xs"
-        >
-          <Code className="w-3.5 h-3.5 mr-1" />
-          Code Block
-        </Button>
+
+        {viewMode === "edit" && (
+          <>
+            <div className="flex items-center gap-1 mr-2">
+              <ToolbarButton icon={Bold} onClick={() => insertMarkdown("**", "**")} title="Bold" />
+              <ToolbarButton icon={Italic} onClick={() => insertMarkdown("*", "*")} title="Italic" />
+              <ToolbarButton icon={Code} onClick={() => insertMarkdown("`", "`")} title="Inline Code" />
+            </div>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <div className="flex items-center gap-1 mr-2">
+              <ToolbarButton icon={Heading1} onClick={() => insertMarkdown("# ")} title="Heading 1" />
+              <ToolbarButton icon={Heading2} onClick={() => insertMarkdown("## ")} title="Heading 2" />
+              <ToolbarButton icon={Heading3} onClick={() => insertMarkdown("### ")} title="Heading 3" />
+            </div>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <div className="flex items-center gap-1 mr-2">
+              <ToolbarButton icon={List} onClick={() => insertMarkdown("- ")} title="Bullet List" />
+              <ToolbarButton icon={ListOrdered} onClick={() => insertMarkdown("1. ")} title="Numbered List" />
+              <ToolbarButton icon={Quote} onClick={() => insertMarkdown("> ")} title="Quote" />
+            </div>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <div className="flex items-center gap-1 mr-2">
+              <ToolbarButton icon={Link} onClick={() => insertMarkdown("[", "](url)")} title="Link" />
+              <ToolbarButton icon={Image} onClick={() => insertMarkdown("![alt](", ")")} title="Image" />
+            </div>
+            
+            <div className="w-px h-6 bg-border mx-1" />
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => insertMarkdown("```\n", "\n```")}
+              className="text-xs"
+            >
+              <Code className="w-3.5 h-3.5 mr-1" />
+              Code Block
+            </Button>
+          </>
+        )}
         
         <div className="flex-1" />
         
@@ -213,6 +247,7 @@ export function NoteEditor({
           onChange={handleTitleChange}
           placeholder="Note title..."
           className="text-2xl font-bold border-0 px-0 h-auto focus-visible:ring-0 bg-transparent"
+          readOnly={viewMode === "preview"}
         />
         
         <div className="flex items-center gap-2 flex-wrap">
@@ -316,15 +351,102 @@ export function NoteEditor({
         </div>
       </div>
 
-      {/* Content Editor */}
-      <div className="flex-1 px-6 py-4">
-        <Textarea
-          id="note-content"
-          value={content}
-          onChange={handleContentChange}
-          placeholder="Start writing your note... (Markdown supported)"
-          className="w-full h-full resize-none border-0 focus-visible:ring-0 bg-transparent font-mono text-sm leading-relaxed"
-        />
+      {/* Content Editor / Preview */}
+      <div className="flex-1 px-6 py-4 overflow-auto">
+        {viewMode === "edit" ? (
+          <Textarea
+            id="note-content"
+            value={content}
+            onChange={handleContentChange}
+            placeholder="Start writing your note... (Markdown supported)"
+            className="w-full h-full resize-none border-0 focus-visible:ring-0 bg-transparent font-mono text-sm leading-relaxed"
+          />
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({ children }) => (
+                  <h1 className="text-2xl font-bold mt-6 mb-4 pb-2 border-b">{children}</h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-xl font-semibold mt-5 mb-3">{children}</h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>
+                ),
+                p: ({ children }) => (
+                  <p className="my-3 leading-relaxed">{children}</p>
+                ),
+                ul: ({ children }) => (
+                  <ul className="my-3 pl-6 list-disc space-y-1">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="my-3 pl-6 list-decimal space-y-1">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="leading-relaxed">{children}</li>
+                ),
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-primary/50 pl-4 my-4 italic text-muted-foreground">
+                    {children}
+                  </blockquote>
+                ),
+                code: ({ className, children, ...props }) => {
+                  const match = /language-(\w+)/.exec(className || "");
+                  const isInline = !match && !className;
+                  
+                  if (isInline) {
+                    return (
+                      <code className="px-1.5 py-0.5 bg-muted rounded text-sm font-mono text-primary">
+                        {children}
+                      </code>
+                    );
+                  }
+                  
+                  return (
+                    <code className={`block bg-muted p-4 rounded-lg text-sm font-mono overflow-x-auto ${className}`} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                pre: ({ children }) => (
+                  <pre className="my-4 bg-muted rounded-lg overflow-hidden">
+                    {children}
+                  </pre>
+                ),
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {children}
+                  </a>
+                ),
+                table: ({ children }) => (
+                  <div className="my-4 overflow-x-auto">
+                    <table className="w-full border-collapse border border-border">
+                      {children}
+                    </table>
+                  </div>
+                ),
+                th: ({ children }) => (
+                  <th className="border border-border px-4 py-2 bg-muted font-semibold text-left">
+                    {children}
+                  </th>
+                ),
+                td: ({ children }) => (
+                  <td className="border border-border px-4 py-2">{children}</td>
+                ),
+                hr: () => <hr className="my-6 border-border" />,
+              }}
+            >
+              {content || "*No content yet. Switch to Edit mode to start writing.*"}
+            </ReactMarkdown>
+          </div>
+        )}
       </div>
     </div>
   );
