@@ -163,6 +163,106 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    if (!id || isNaN(parseInt(id))) {
+      return NextResponse.json(
+        { error: 'Valid ID is required', code: 'INVALID_ID' },
+        { status: 400 }
+      );
+    }
+
+    const noteId = parseInt(id);
+    const requestBody = await request.json();
+
+    const existingNote = await db
+      .select()
+      .from(notes)
+      .where(eq(notes.id, noteId))
+      .limit(1);
+
+    if (existingNote.length === 0) {
+      return NextResponse.json(
+        { error: 'Note not found', code: 'NOTE_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    const {
+      title,
+      content,
+      categoryId,
+      isFavorite,
+      isArchived,
+      isDeleted,
+      tags: tagIds,
+    } = requestBody;
+
+    const updates: any = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (title !== undefined) updates.title = title;
+    if (content !== undefined) updates.content = content;
+    if (categoryId !== undefined) updates.categoryId = categoryId;
+    if (isFavorite !== undefined) updates.isFavorite = isFavorite;
+    if (isArchived !== undefined) updates.isArchived = isArchived;
+    if (isDeleted !== undefined) updates.isDeleted = isDeleted;
+
+    const updatedNote = await db
+      .update(notes)
+      .set(updates)
+      .where(eq(notes.id, noteId))
+      .returning();
+
+    if (tagIds !== undefined && Array.isArray(tagIds)) {
+      await db.delete(noteTags).where(eq(noteTags.noteId, noteId));
+
+      if (tagIds.length > 0) {
+        const noteTagsInserts = tagIds.map((tagId: number) => ({
+          noteId: noteId,
+          tagId: tagId,
+        }));
+        await db.insert(noteTags).values(noteTagsInserts);
+      }
+    }
+
+    const noteTags_records = await db
+      .select({
+        tagId: noteTags.tagId,
+        tagName: tags.name,
+        tagColor: tags.color,
+      })
+      .from(noteTags)
+      .innerJoin(tags, eq(noteTags.tagId, tags.id))
+      .where(eq(noteTags.noteId, noteId));
+
+    const noteTags_array = noteTags_records.map((nt) => ({
+      id: nt.tagId,
+      name: nt.tagName,
+      color: nt.tagColor,
+    }));
+
+    return NextResponse.json({
+      note: {
+        ...updatedNote[0],
+        tags: noteTags_array,
+      },
+    });
+  } catch (error) {
+    console.error('PATCH error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error: ' + (error as Error).message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
