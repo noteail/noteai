@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import {
   Bold,
   Italic,
@@ -26,6 +28,8 @@ import {
   CloudOff,
   Loader2,
   CheckCircle2,
+  Copy,
+  CheckCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,92 +207,137 @@ export function NoteEditor({
   const noteTags = tags.filter((t) => note.tags.includes(t.id));
 
   // Preview component to avoid duplication
-  const PreviewContent = () => (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => (
-            <h1 className="text-2xl font-bold mt-6 mb-4 pb-2 border-b">{children}</h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-xl font-semibold mt-5 mb-3">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>
-          ),
-          p: ({ children }) => (
-            <p className="my-3 leading-relaxed">{children}</p>
-          ),
-          ul: ({ children }) => (
-            <ul className="my-3 pl-6 list-disc space-y-1">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="my-3 pl-6 list-decimal space-y-1">{children}</ol>
-          ),
-          li: ({ children }) => (
-            <li className="leading-relaxed">{children}</li>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-primary/50 pl-4 my-4 italic text-muted-foreground">
-              {children}
-            </blockquote>
-          ),
-          code: ({ className, children, ...props }) => {
-            const match = /language-(\w+)/.exec(className || "");
-            const isInline = !match && !className;
-            
-            if (isInline) {
+  const PreviewContent = () => {
+    const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+    const copyToClipboard = async (code: string) => {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    };
+
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: ({ children }) => (
+              <h1 className="text-2xl font-bold mt-6 mb-4 pb-2 border-b">{children}</h1>
+            ),
+            h2: ({ children }) => (
+              <h2 className="text-xl font-semibold mt-5 mb-3">{children}</h2>
+            ),
+            h3: ({ children }) => (
+              <h3 className="text-lg font-semibold mt-4 mb-2">{children}</h3>
+            ),
+            p: ({ children }) => (
+              <p className="my-3 leading-relaxed">{children}</p>
+            ),
+            ul: ({ children }) => (
+              <ul className="my-3 pl-6 list-disc space-y-1">{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="my-3 pl-6 list-decimal space-y-1">{children}</ol>
+            ),
+            li: ({ children }) => (
+              <li className="leading-relaxed">{children}</li>
+            ),
+            blockquote: ({ children }) => (
+              <blockquote className="border-l-4 border-primary/50 pl-4 my-4 italic text-muted-foreground">
+                {children}
+              </blockquote>
+            ),
+            code: ({ className, children, ...props }) => {
+              const match = /language-(\w+)/.exec(className || "");
+              const codeString = String(children).replace(/\n$/, "");
+              
+              // Inline code
+              if (!match) {
+                return (
+                  <code className="px-1.5 py-0.5 bg-muted rounded text-sm font-mono text-primary">
+                    {children}
+                  </code>
+                );
+              }
+              
+              // Code block with syntax highlighting
+              const language = match[1];
+              
               return (
-                <code className="px-1.5 py-0.5 bg-muted rounded text-sm font-mono text-primary">
-                  {children}
-                </code>
+                <div className="relative group my-4">
+                  <div className="flex items-center justify-between px-4 py-2 bg-zinc-800 rounded-t-lg border-b border-zinc-700">
+                    <span className="text-xs font-medium text-zinc-400 uppercase">
+                      {language}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(codeString)}
+                      className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                    >
+                      {copiedCode === codeString ? (
+                        <>
+                          <CheckCheck className="w-3.5 h-3.5" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <SyntaxHighlighter
+                    style={oneDark}
+                    language={language}
+                    PreTag="div"
+                    customStyle={{
+                      margin: 0,
+                      borderTopLeftRadius: 0,
+                      borderTopRightRadius: 0,
+                      borderBottomLeftRadius: "0.5rem",
+                      borderBottomRightRadius: "0.5rem",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    {codeString}
+                  </SyntaxHighlighter>
+                </div>
               );
-            }
-            
-            return (
-              <code className={`block bg-muted p-4 rounded-lg text-sm font-mono overflow-x-auto ${className}`} {...props}>
+            },
+            pre: ({ children }) => <>{children}</>,
+            a: ({ href, children }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
                 {children}
-              </code>
-            );
-          },
-          pre: ({ children }) => (
-            <pre className="my-4 bg-muted rounded-lg overflow-hidden">
-              {children}
-            </pre>
-          ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              {children}
-            </a>
-          ),
-          table: ({ children }) => (
-            <div className="my-4 overflow-x-auto">
-              <table className="w-full border-collapse border border-border">
+              </a>
+            ),
+            table: ({ children }) => (
+              <div className="my-4 overflow-x-auto">
+                <table className="w-full border-collapse border border-border">
+                  {children}
+                </table>
+              </div>
+            ),
+            th: ({ children }) => (
+              <th className="border border-border px-4 py-2 bg-muted font-semibold text-left">
                 {children}
-              </table>
-            </div>
-          ),
-          th: ({ children }) => (
-            <th className="border border-border px-4 py-2 bg-muted font-semibold text-left">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-border px-4 py-2">{children}</td>
-          ),
-          hr: () => <hr className="my-6 border-border" />,
-        }}
-      >
-        {content || "*No content yet. Switch to Edit mode to start writing.*"}
-      </ReactMarkdown>
-    </div>
-  );
+              </th>
+            ),
+            td: ({ children }) => (
+              <td className="border border-border px-4 py-2">{children}</td>
+            ),
+            hr: () => <hr className="my-6 border-border" />,
+          }}
+        >
+          {content || "*No content yet. Switch to Edit mode to start writing.*"}
+        </ReactMarkdown>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full">
