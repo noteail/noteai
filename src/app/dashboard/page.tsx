@@ -210,23 +210,29 @@ function DashboardContent() {
   const fetchNotes = useCallback(async (filter: string, search: string) => {
     setIsLoading(true);
     try {
-      let url = "/api/notes";
+      let url = "/api/db/notes";
       const params = new URLSearchParams();
 
       if (search) {
         params.set("search", search);
       } else if (filter === "favorites") {
-        params.set("filter", "favorites");
+        params.set("isFavorite", "true");
       } else if (filter === "recent") {
-        params.set("filter", "recent");
+        // Recent is default sort by updatedAt
       } else if (filter === "archived") {
-        params.set("filter", "archived");
+        params.set("isArchived", "true");
       } else if (filter === "trash") {
-        params.set("filter", "trash");
+        params.set("isDeleted", "true");
       } else if (filter.startsWith("category-")) {
         params.set("categoryId", filter.replace("category-", ""));
       } else if (filter.startsWith("tag-")) {
         params.set("tagId", filter.replace("tag-", ""));
+      }
+      
+      // By default, don't show archived or deleted notes
+      if (filter !== "archived" && filter !== "trash") {
+        params.set("isArchived", "false");
+        params.set("isDeleted", "false");
       }
 
       if (params.toString()) {
@@ -255,8 +261,8 @@ function DashboardContent() {
     const fetchInitialData = async () => {
       try {
         const [categoriesRes, tagsRes] = await Promise.all([
-          fetch("/api/categories", { headers: getAuthHeaders() }),
-          fetch("/api/tags", { headers: getAuthHeaders() }),
+          fetch("/api/db/categories", { headers: getAuthHeaders() }),
+          fetch("/api/db/tags", { headers: getAuthHeaders() }),
         ]);
 
         if (categoriesRes.ok) {
@@ -334,12 +340,13 @@ function DashboardContent() {
     }
 
     try {
-      const response = await fetch("/api/notes", {
+      const response = await fetch("/api/db/notes", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
           title: "Untitled Note",
-          content: "",
+          content: "Start writing here...",
+          userId: session?.user?.id ? parseInt(session.user.id) : null,
           categoryId: activeFilter.startsWith("category-")
             ? parseInt(activeFilter.replace("category-", ""))
             : null,
@@ -355,15 +362,19 @@ function DashboardContent() {
         // Track note creation
         await track({ featureId: "notes", value: 1, idempotencyKey: `note-${data.note.id}` });
         await refetchCustomer();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to create note");
       }
     } catch (error) {
       console.error("Failed to create note:", error);
+      toast.error("Failed to create note");
     }
   };
 
   const handleNoteUpdate = async (updatedNote: Note) => {
     try {
-      const response = await fetch(`/api/notes/${updatedNote.id}`, {
+      const response = await fetch(`/api/db/notes/${updatedNote.id}`, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -388,7 +399,7 @@ function DashboardContent() {
 
   const handleDeleteNote = async (noteId: number, permanent: boolean = false) => {
     try {
-      await fetch(`/api/notes/${noteId}?permanent=${permanent}`, {
+      await fetch(`/api/db/notes/${noteId}?permanent=${permanent}`, {
         method: "DELETE",
         headers: getAuthHeaders(),
       });
