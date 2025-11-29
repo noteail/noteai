@@ -15,6 +15,13 @@
       "when": 1764425712792,
       "tag": "0001_faithful_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1764436803755,
+      "tag": "0002_black_dexter_bennett",
+      "breakpoints": true
     }
   ]
 }

@@ -45,7 +45,7 @@ import { AIAssistantModal } from "@/components/AIAssistantModal";
 import { authClient, useSession } from "@/lib/auth-client";
 import { AutumnProvider, useCustomer } from "autumn-js/react";
 import { toast } from "sonner";
-import type { Note, Category, Tag as TagType } from "@/lib/db";
+import type { Note, Category, Tag } from "@/types/notes";
 
 const categoryIcons: Record<string, React.ElementType> = {
   user: User,
@@ -187,7 +187,7 @@ function DashboardContent() {
   const { customer, check, track, refetch: refetchCustomer, isLoading: customerLoading } = useCustomer();
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [tags, setTags] = useState<TagType[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");

@@ -36,13 +36,13 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import type { Note, Category, Tag as TagType } from "@/lib/db";
+import type { Note, Category, Tag } from "@/types/notes";
 
 interface NoteEditorProps {
   note: Note;
   onUpdate: (note: Note) => void;
   categories: Category[];
-  tags: TagType[];
+  tags: Tag[];
   onOpenAI: (selectedText?: string) => void;
 }
 
