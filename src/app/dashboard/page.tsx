@@ -32,6 +32,10 @@ import {
   LayoutTemplate,
   Command,
   ChevronDown,
+  PanelLeftClose,
+  PanelLeft,
+  PanelRightClose,
+  PanelRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -244,6 +248,10 @@ function DashboardContent() {
   const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(true);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(true);
   const [isTagsOpen, setIsTagsOpen] = useState(true);
+  
+  // Collapsible panels state (desktop only)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isNoteListCollapsed, setIsNoteListCollapsed] = useState(false);
   
   // Track if initial load happened
   const initialLoadDone = useRef(false);
@@ -688,11 +696,11 @@ function DashboardContent() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 bg-sidebar border-r border-sidebar-border transform transition-all duration-200 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        } ${isSidebarCollapsed ? "lg:w-0 lg:border-r-0 lg:overflow-hidden" : "w-72 lg:w-64"}`}
       >
-        <div className="flex flex-col h-full">
+        <div className={`flex flex-col h-full ${isSidebarCollapsed ? "lg:hidden" : ""}`}>
           {/* Sidebar Header */}
           <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
             <div className="flex items-center gap-2">
@@ -937,7 +945,22 @@ function DashboardContent() {
         )}
 
         {/* Desktop Top Bar */}
-        <header className="hidden md:flex items-center gap-4 px-4 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="hidden md:flex items-center gap-2 px-4 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          {/* Sidebar Toggle Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden lg:flex"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeft className="w-5 h-5" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5" />
+            )}
+          </Button>
+          
           <Button
             variant="ghost"
             size="icon"
@@ -995,28 +1018,40 @@ function DashboardContent() {
         {/* Content Area */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           {/* Notes List - Hidden on mobile when viewing editor */}
-          <div className={`w-full md:w-80 border-r bg-muted/30 flex flex-col ${
+          <div className={`border-r bg-muted/30 flex flex-col transition-all duration-200 ${
             mobileView === "editor" ? "hidden md:flex" : "flex"
-          }`}>
+          } ${isNoteListCollapsed ? "md:w-0 md:border-r-0 md:overflow-hidden" : "w-full md:w-80"}`}>
             {/* List Header */}
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className={`p-4 border-b flex items-center justify-between ${isNoteListCollapsed ? "md:hidden" : ""}`}>
               <div>
                 <h2 className="font-semibold">{getFilterTitle()}</h2>
                 <p className="text-sm text-muted-foreground">
                   {notes.length} note{notes.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="md:hidden"
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {/* Note List Toggle Button (Desktop) */}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="hidden md:flex"
+                  onClick={() => setIsNoteListCollapsed(!isNoteListCollapsed)}
+                  title="Hide Note List"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="md:hidden"
+                  onClick={() => setIsSidebarOpen(true)}
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className={`flex-1 ${isNoteListCollapsed ? "md:hidden" : ""}`}>
               {isLoading ? (
                 <div className="p-4 space-y-3">
                   {[1, 2, 3, 4, 5].map((i) => (
@@ -1062,6 +1097,24 @@ function DashboardContent() {
           <div className={`flex-1 flex flex-col min-w-0 ${
             mobileView === "list" ? "hidden md:flex" : "flex"
           }`}>
+            {/* Show Note List Toggle when collapsed */}
+            {isNoteListCollapsed && (
+              <div className="hidden md:flex items-center gap-2 px-2 py-2 border-b">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsNoteListCollapsed(false)}
+                  className="gap-2"
+                >
+                  <PanelLeft className="w-4 h-4" />
+                  <span className="text-xs">Show Notes</span>
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {notes.length} note{notes.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+            
             {selectedNote ? (
               <NoteEditor
                 note={selectedNote}
