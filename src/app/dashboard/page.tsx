@@ -785,6 +785,9 @@ function DashboardContent() {
                 categories={categories}
                 tags={tags}
                 onOpenAI={openAIAssistant}
+                onTagCreated={(newTag) => {
+                  setTags(prev => [...prev, newTag]);
+                }}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">

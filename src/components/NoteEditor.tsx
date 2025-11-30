@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   Copy,
   CheckCheck,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import type { Note, Category, Tag as TagType } from "@/types/notes";
 
 interface NoteEditorProps {
@@ -63,7 +65,31 @@ interface NoteEditorProps {
   categories: Category[];
   tags: TagType[];
   onOpenAI: (selectedText?: string) => void;
+  onTagCreated?: (tag: TagType) => void;
 }
+
+// Helper function to get auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("bearer_token") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+// Predefined colors for new tags
+const TAG_COLORS = [
+  "#ef4444", // red
+  "#f97316", // orange
+  "#eab308", // yellow
+  "#22c55e", // green
+  "#14b8a6", // teal
+  "#3b82f6", // blue
+  "#6366f1", // indigo
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#64748b", // slate
+];
 
 export function NoteEditor({
   note,
@@ -71,6 +97,7 @@ export function NoteEditor({
   categories,
   tags,
   onOpenAI,
+  onTagCreated,
 }: NoteEditorProps) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
@@ -79,6 +106,8 @@ export function NoteEditor({
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"edit" | "preview" | "split">("edit");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [newTagName, setNewTagName] = useState("");
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastNoteIdRef = useRef<number>(note.id);
@@ -105,6 +134,82 @@ export function NoteEditor({
       if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
     };
   }, []);
+
+  // Create new tag
+  const handleCreateTag = async () => {
+    const trimmedName = newTagName.trim();
+    if (!trimmedName) return;
+    
+    // Check if tag already exists
+    const existingTag = tags.find(
+      (t) => t.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (existingTag) {
+      toast.error("A tag with this name already exists");
+      return;
+    }
+    
+    setIsCreatingTag(true);
+    try {
+      // Get user ID from localStorage or session
+      const token = localStorage.getItem("bearer_token");
+      let userId: string | null = null;
+      
+      // Try to get user ID from session storage or extract from a recent API call
+      // For now, we'll make a call to get the current user
+      const sessionRes = await fetch("/api/auth/get-session", {
+        headers: getAuthHeaders(),
+      });
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json();
+        userId = sessionData?.session?.userId || sessionData?.user?.id;
+      }
+      
+      if (!userId) {
+        toast.error("Could not determine user. Please refresh and try again.");
+        return;
+      }
+      
+      // Pick a random color
+      const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+      
+      const response = await fetch("/api/db/tags", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: trimmedName,
+          color: randomColor,
+          userId: parseInt(userId),
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newTag = data.tag;
+        
+        // Notify parent to update tags list
+        if (onTagCreated) {
+          onTagCreated(newTag);
+        }
+        
+        // Auto-select the new tag
+        const newTags = [...localTags, newTag.id];
+        setLocalTags(newTags);
+        onUpdate({ ...note, tags: newTags });
+        
+        setNewTagName("");
+        toast.success(`Tag "#${trimmedName}" created!`);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to create tag");
+      }
+    } catch (error) {
+      console.error("Failed to create tag:", error);
+      toast.error("Failed to create tag");
+    } finally {
+      setIsCreatingTag(false);
+    }
+  };
 
   // Auto-save function
   const triggerAutoSave = useCallback(
@@ -526,11 +631,51 @@ export function NoteEditor({
                 Add Tags
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48" align="start">
+            <DropdownMenuContent className="w-56" align="start">
               <DropdownMenuLabel className="text-xs">Select Tags</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              
+              {/* Create New Tag Section */}
+              <div className="px-2 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    placeholder="New tag name..."
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateTag();
+                      }
+                    }}
+                    className="h-8 text-sm"
+                    disabled={isCreatingTag}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 px-2 shrink-0"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCreateTag();
+                    }}
+                    disabled={!newTagName.trim() || isCreatingTag}
+                  >
+                    {isCreatingTag ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              <DropdownMenuSeparator />
+              
               {tags.length === 0 ? (
-                <p className="text-sm text-muted-foreground px-2 py-1.5">No tags available</p>
+                <p className="text-sm text-muted-foreground px-2 py-1.5">No tags yet. Create one above!</p>
               ) : (
                 tags.map((tag) => {
                   const isSelected = (localTags || []).includes(tag.id);
