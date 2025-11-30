@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ NotesAI
+# ✨ NotesAI - NoteAIL
 
 ### *Where Simplicity Meets Intelligence*
 
@@ -13,11 +13,11 @@
 
 **A revolutionary note-taking experience that proves the most powerful tools are often the simplest.**
 
-[Live Demo](https://notail.vercel.app) · [Report Bug](https://github.com/yourusername/notesai/issues) · [Request Feature](https://github.com/yourusername/notesai/issues)
+[Live Demo](https://noteail.com) · [Report Bug](https://github.com/noteail/noteai/issues) · [Request Feature](https://github.com/noteail/noteai/issues)
 
 <br />
 
-<img src="https://raw.githubusercontent.com/yourusername/notesai/main/public/demo.png" alt="NotesAI Dashboard" width="100%" />
+<img src="https://raw.githubusercontent.com/noteail/noteai/main/public/demo.png" alt="NotesAI Dashboard" width="100%" />
 
 </div>
 
@@ -243,7 +243,7 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ### Built with 🖤 and an obsession for simplicity
 
-**[notail.vercel.app](https://notail.vercel.app)**
+**[noteail.com](https://noteail.com)**
 
 <br />
 
