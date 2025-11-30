@@ -3,27 +3,27 @@ import { db } from '@/db';
 import { notes, noteTags, tags, categories } from '@/db/schema';
 import { eq, like, and, or, desc, inArray } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 
 // Helper function to get current user from session using Bearer token
-async function getCurrentUserId(request: NextRequest): Promise<number | null> {
+async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   try {
     // Get Authorization header from the request
     const authHeader = request.headers.get('Authorization');
     
-    // Create headers object with Authorization for better-auth
-    const headersList = await headers();
-    const headersObj = new Headers(headersList);
-    
-    // If Bearer token is provided, add it to headers
-    if (authHeader) {
-      headersObj.set('Authorization', authHeader);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No valid Authorization header found');
+      return null;
     }
+    
+    // Create headers object with Authorization for better-auth
+    const headersObj = new Headers();
+    headersObj.set('Authorization', authHeader);
     
     const session = await auth.api.getSession({ headers: headersObj });
     
     if (session?.user?.id) {
-      return parseInt(session.user.id);
+      // Return as string - DO NOT parseInt! userId is text type in schema
+      return session.user.id;
     }
     return null;
   } catch (error) {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     const isArchived = searchParams.get('isArchived');
     const isDeleted = searchParams.get('isDeleted');
 
-    // Build WHERE conditions - ALWAYS filter by current user
+    // Build WHERE conditions - ALWAYS filter by current user (userId is string!)
     const conditions = [eq(notes.userId, userId)];
 
     if (search) {
@@ -206,12 +206,12 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
 
-    // Insert note with userId from session (NOT from client)
+    // Insert note with userId from session (string type!)
     const newNote = await db.insert(notes)
       .values({
         title: title.trim(),
         content: content.trim(),
-        userId: userId, // Use session userId - secure!
+        userId: userId, // Use session userId as string - secure!
         categoryId: categoryId ? parseInt(categoryId) : null,
         isFavorite: isFavorite ?? false,
         isArchived: false,

@@ -3,23 +3,25 @@ import { db } from '@/db';
 import { tags } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 
 // Helper function to get current user from session using Bearer token
-async function getCurrentUserId(request: NextRequest): Promise<number | null> {
+async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   try {
     const authHeader = request.headers.get('Authorization');
-    const headersList = await headers();
-    const headersObj = new Headers(headersList);
     
-    if (authHeader) {
-      headersObj.set('Authorization', authHeader);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No valid Authorization header found');
+      return null;
     }
+    
+    const headersObj = new Headers();
+    headersObj.set('Authorization', authHeader);
     
     const session = await auth.api.getSession({ headers: headersObj });
     
     if (session?.user?.id) {
-      return parseInt(session.user.id);
+      // Return as string - userId is text type in schema
+      return session.user.id;
     }
     return null;
   } catch (error) {
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100);
     const offset = parseInt(searchParams.get('offset') ?? '0');
 
-    // Always filter by current user - secure!
+    // Always filter by current user (userId is string) - secure!
     const results = await db.select()
       .from(tags)
       .where(eq(tags.userId, userId))
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
     const tagData = {
       name: name.trim(),
       color: color?.trim() || '#6366f1',
-      userId: userId, // Use session userId - secure!
+      userId: userId, // Use session userId as string - secure!
     };
 
     const newTag = await db.insert(tags).values(tagData).returning();

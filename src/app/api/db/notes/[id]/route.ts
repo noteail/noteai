@@ -3,27 +3,25 @@ import { db } from '@/db';
 import { notes, noteTags, tags } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
-import { headers } from 'next/headers';
 
 // Helper function to get current user from session using Bearer token
-async function getCurrentUserId(request: NextRequest): Promise<number | null> {
+async function getCurrentUserId(request: NextRequest): Promise<string | null> {
   try {
-    // Get Authorization header from the request
     const authHeader = request.headers.get('Authorization');
     
-    // Create headers object with Authorization for better-auth
-    const headersList = await headers();
-    const headersObj = new Headers(headersList);
-    
-    // If Bearer token is provided, add it to headers
-    if (authHeader) {
-      headersObj.set('Authorization', authHeader);
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No valid Authorization header found');
+      return null;
     }
+    
+    const headersObj = new Headers();
+    headersObj.set('Authorization', authHeader);
     
     const session = await auth.api.getSession({ headers: headersObj });
     
     if (session?.user?.id) {
-      return parseInt(session.user.id);
+      // Return as string - userId is text type in schema
+      return session.user.id;
     }
     return null;
   } catch (error) {
@@ -37,7 +35,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user from session
     const userId = await getCurrentUserId(request);
     
     if (!userId) {
@@ -58,7 +55,7 @@ export async function GET(
 
     const noteId = parseInt(id);
 
-    // Get note and verify ownership
+    // Get note and verify ownership - userId is string
     const note = await db
       .select()
       .from(notes)
@@ -108,7 +105,6 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user from session
     const userId = await getCurrentUserId(request);
     
     if (!userId) {
@@ -130,7 +126,7 @@ export async function PUT(
     const noteId = parseInt(id);
     const requestBody = await request.json();
 
-    // Verify ownership before update
+    // Verify ownership before update - userId is string
     const existingNote = await db
       .select()
       .from(notes)
@@ -219,7 +215,6 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user from session
     const userId = await getCurrentUserId(request);
     
     if (!userId) {
@@ -241,7 +236,7 @@ export async function PATCH(
     const noteId = parseInt(id);
     const requestBody = await request.json();
 
-    // Verify ownership before update
+    // Verify ownership before update - userId is string
     const existingNote = await db
       .select()
       .from(notes)
@@ -330,7 +325,6 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user from session
     const userId = await getCurrentUserId(request);
     
     if (!userId) {
@@ -353,7 +347,7 @@ export async function DELETE(
     const { searchParams } = new URL(request.url);
     const permanent = searchParams.get('permanent') === 'true';
 
-    // Verify ownership before delete
+    // Verify ownership before delete - userId is string
     const existingNote = await db
       .select()
       .from(notes)
