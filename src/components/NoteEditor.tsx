@@ -519,7 +519,13 @@ export function NoteEditor({
                     {tags.map((tag) => (
                       <CommandItem
                         key={tag.id}
-                        onSelect={() => toggleTag(tag.id)}
+                        value={`tag-${tag.id}-${tag.name}`}
+                        onSelect={() => {
+                          toggleTag(tag.id);
+                        }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                        }}
                       >
                         <div
                           className="w-3 h-3 rounded-full mr-2"
