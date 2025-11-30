@@ -788,6 +788,9 @@ function DashboardContent() {
                 onTagCreated={(newTag) => {
                   setTags(prev => [...prev, newTag]);
                 }}
+                onCategoryCreated={(newCategory) => {
+                  setCategories(prev => [...prev, newCategory]);
+                }}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">

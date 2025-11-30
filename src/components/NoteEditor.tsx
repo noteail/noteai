@@ -54,6 +54,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -66,6 +67,7 @@ interface NoteEditorProps {
   tags: TagType[];
   onOpenAI: (selectedText?: string) => void;
   onTagCreated?: (tag: TagType) => void;
+  onCategoryCreated?: (category: Category) => void;
 }
 
 // Helper function to get auth headers
@@ -77,7 +79,7 @@ const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-// Predefined colors for new tags
+// Predefined colors for new tags/categories
 const TAG_COLORS = [
   "#ef4444", // red
   "#f97316", // orange
@@ -91,6 +93,9 @@ const TAG_COLORS = [
   "#64748b", // slate
 ];
 
+// Default icons for categories
+const DEFAULT_CATEGORY_ICON = "folder";
+
 export function NoteEditor({
   note,
   onUpdate,
@@ -98,6 +103,7 @@ export function NoteEditor({
   tags,
   onOpenAI,
   onTagCreated,
+  onCategoryCreated,
 }: NoteEditorProps) {
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
@@ -108,6 +114,8 @@ export function NoteEditor({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [newTagName, setNewTagName] = useState("");
   const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastNoteIdRef = useRef<number>(note.id);
@@ -134,6 +142,62 @@ export function NoteEditor({
       if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
     };
   }, []);
+
+  // Create new category
+  const handleCreateCategory = async () => {
+    const trimmedName = newCategoryName.trim();
+    if (!trimmedName) return;
+    
+    // Check if category already exists
+    const existingCategory = categories.find(
+      (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (existingCategory) {
+      toast.error("A category with this name already exists");
+      return;
+    }
+    
+    setIsCreatingCategory(true);
+    try {
+      // Pick a random color
+      const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+      
+      const response = await fetch("/api/db/categories", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: trimmedName,
+          color: randomColor,
+          icon: DEFAULT_CATEGORY_ICON,
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newCategory = data.category;
+        
+        // Notify parent to update categories list
+        if (onCategoryCreated) {
+          onCategoryCreated(newCategory);
+        }
+        
+        // Auto-select the new category
+        onUpdate({ ...note, categoryId: newCategory.id });
+        
+        setNewCategoryName("");
+        setIsCategoryOpen(false);
+        toast.success(`Category "${trimmedName}" created!`);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || "Failed to create category");
+      }
+    } catch (error) {
+      console.error("Failed to create category:", error);
+      toast.error("Failed to create category");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   // Create new tag
   const handleCreateTag = async () => {
@@ -574,12 +638,54 @@ export function NoteEditor({
                 {currentCategory ? currentCategory.name : "No Category"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="p-0 w-48" align="start">
+            <PopoverContent className="p-0 w-56" align="start">
               <Command>
                 <CommandInput placeholder="Search category..." />
                 <CommandList>
                   <CommandEmpty>No category found.</CommandEmpty>
-                  <CommandGroup>
+                  
+                  {/* Create New Category Section */}
+                  <CommandGroup heading="Create New">
+                    <div className="px-2 py-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          placeholder="New category..."
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleCreateCategory();
+                            }
+                          }}
+                          className="h-8 text-sm"
+                          disabled={isCreatingCategory}
+                        />
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 px-2 shrink-0"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleCreateCategory();
+                          }}
+                          disabled={!newCategoryName.trim() || isCreatingCategory}
+                        >
+                          {isCreatingCategory ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CommandGroup>
+                  
+                  <CommandSeparator />
+                  
+                  <CommandGroup heading="Categories">
                     <CommandItem onSelect={() => selectCategory(null)}>
                       <span className="text-muted-foreground">No Category</span>
                       {note.categoryId === null && <Check className="ml-auto w-4 h-4" />}
