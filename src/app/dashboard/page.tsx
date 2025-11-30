@@ -55,6 +55,7 @@ import { TemplatesModal } from "@/components/TemplatesModal";
 import { CommandPalette } from "@/components/CommandPalette";
 import { FocusMode } from "@/components/FocusMode";
 import { QuickCapture } from "@/components/QuickCapture";
+import { BugReporter } from "@/components/BugReporter";
 import type { NoteTemplate } from "@/lib/templates";
 import { authClient, useSession } from "@/lib/auth-client";
 import { AutumnProvider, useCustomer } from "autumn-js/react";
@@ -1230,6 +1231,9 @@ function DashboardContent() {
 
       {/* Quick Capture Widget */}
       <QuickCapture onCreateNote={handleQuickCapture} />
+
+      {/* Bug Reporter Widget */}
+      <BugReporter />
     </div>
   );
 }

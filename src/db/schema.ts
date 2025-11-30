@@ -99,3 +99,19 @@ export const noteTags = sqliteTable('note_tags', {
   noteId: integer('note_id').notNull().references(() => notes.id, { onDelete: "cascade" }),
   tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: "cascade" }),
 });
+
+// Bug reports table for In-App Bug Reporter
+export const bugReports = sqliteTable('bug_reports', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  severity: text('severity').notNull(), // 'low', 'medium', 'high', 'critical'
+  pageUrl: text('page_url'),
+  browserInfo: text('browser_info'),
+  userId: text('user_id').references(() => user.id, { onDelete: "set null" }),
+  userEmail: text('user_email'),
+  status: text('status').notNull().default('open'), // 'open', 'in_progress', 'resolved', 'closed'
+  ipAddress: text('ip_address'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
