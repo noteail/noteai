@@ -517,15 +517,10 @@ export function NoteEditor({
                   <CommandEmpty>No tags found.</CommandEmpty>
                   <CommandGroup>
                     {tags.map((tag) => (
-                      <CommandItem
+                      <div
                         key={tag.id}
-                        value={`tag-${tag.id}-${tag.name}`}
-                        onSelect={() => {
-                          toggleTag(tag.id);
-                        }}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                        }}
+                        className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                        onClick={() => toggleTag(tag.id)}
                       >
                         <div
                           className="w-3 h-3 rounded-full mr-2"
@@ -535,7 +530,7 @@ export function NoteEditor({
                         {note.tags.includes(tag.id) && (
                           <Check className="ml-auto w-4 h-4" />
                         )}
-                      </CommandItem>
+                      </div>
                     ))}
                   </CommandGroup>
                 </CommandList>
