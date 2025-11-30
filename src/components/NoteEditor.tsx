@@ -151,35 +151,16 @@ export function NoteEditor({
     
     setIsCreatingTag(true);
     try {
-      // Get user ID from localStorage or session
-      const token = localStorage.getItem("bearer_token");
-      let userId: string | null = null;
-      
-      // Try to get user ID from session storage or extract from a recent API call
-      // For now, we'll make a call to get the current user
-      const sessionRes = await fetch("/api/auth/get-session", {
-        headers: getAuthHeaders(),
-      });
-      if (sessionRes.ok) {
-        const sessionData = await sessionRes.json();
-        userId = sessionData?.session?.userId || sessionData?.user?.id;
-      }
-      
-      if (!userId) {
-        toast.error("Could not determine user. Please refresh and try again.");
-        return;
-      }
-      
       // Pick a random color
       const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
       
+      // API will get userId from session - no need to send it!
       const response = await fetch("/api/db/tags", {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify({
           name: trimmedName,
           color: randomColor,
-          userId: parseInt(userId),
         }),
       });
       

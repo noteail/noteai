@@ -7,11 +7,10 @@ export const authClient = createAuthClient({
   fetchOptions: {
       onSuccess: (ctx) => {
           const authToken = ctx.response.headers.get("set-auth-token")
-          // Store the token securely (e.g., in localStorage)
+          // Store the FULL token - DO NOT split it!
+          // JWT tokens need all 3 parts (header.payload.signature) to be valid
           if(authToken){
-            // Split token at "." and take only the first part
-            const tokenPart = authToken.includes('.') ? authToken.split('.')[0] : authToken;
-            localStorage.setItem("bearer_token", tokenPart);
+            localStorage.setItem("bearer_token", authToken);
           }
       }
   }

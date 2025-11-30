@@ -5,15 +5,29 @@ import { eq, like, and, or, desc, inArray } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
-// Helper function to get current user from session
-async function getCurrentUserId(): Promise<number | null> {
+// Helper function to get current user from session using Bearer token
+async function getCurrentUserId(request: NextRequest): Promise<number | null> {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
+    // Get Authorization header from the request
+    const authHeader = request.headers.get('Authorization');
+    
+    // Create headers object with Authorization for better-auth
+    const headersList = await headers();
+    const headersObj = new Headers(headersList);
+    
+    // If Bearer token is provided, add it to headers
+    if (authHeader) {
+      headersObj.set('Authorization', authHeader);
+    }
+    
+    const session = await auth.api.getSession({ headers: headersObj });
+    
     if (session?.user?.id) {
       return parseInt(session.user.id);
     }
     return null;
-  } catch {
+  } catch (error) {
+    console.error('Session validation error:', error);
     return null;
   }
 }
@@ -21,7 +35,7 @@ async function getCurrentUserId(): Promise<number | null> {
 export async function GET(request: NextRequest) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json({ 
@@ -134,7 +148,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json({ 

@@ -5,15 +5,29 @@ import { eq, and } from 'drizzle-orm';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 
-// Helper function to get current user from session
-async function getCurrentUserId(): Promise<number | null> {
+// Helper function to get current user from session using Bearer token
+async function getCurrentUserId(request: NextRequest): Promise<number | null> {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
+    // Get Authorization header from the request
+    const authHeader = request.headers.get('Authorization');
+    
+    // Create headers object with Authorization for better-auth
+    const headersList = await headers();
+    const headersObj = new Headers(headersList);
+    
+    // If Bearer token is provided, add it to headers
+    if (authHeader) {
+      headersObj.set('Authorization', authHeader);
+    }
+    
+    const session = await auth.api.getSession({ headers: headersObj });
+    
     if (session?.user?.id) {
       return parseInt(session.user.id);
     }
     return null;
-  } catch {
+  } catch (error) {
+    console.error('Session validation error:', error);
     return null;
   }
 }
@@ -24,7 +38,7 @@ export async function GET(
 ) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json(
@@ -95,7 +109,7 @@ export async function PUT(
 ) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json(
@@ -163,7 +177,7 @@ export async function PUT(
       if (tagIds.length > 0) {
         const noteTagsInserts = tagIds.map((tagId) => ({
           noteId: noteId,
-          tagId: tagId,
+          tagId: typeof tagId === 'number' ? tagId : parseInt(tagId),
         }));
         await db.insert(noteTags).values(noteTagsInserts);
       }
@@ -206,7 +220,7 @@ export async function PATCH(
 ) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json(
@@ -274,7 +288,7 @@ export async function PATCH(
       if (tagIds.length > 0) {
         const noteTagsInserts = tagIds.map((tagId: number) => ({
           noteId: noteId,
-          tagId: tagId,
+          tagId: typeof tagId === 'number' ? tagId : parseInt(tagId),
         }));
         await db.insert(noteTags).values(noteTagsInserts);
       }
@@ -317,7 +331,7 @@ export async function DELETE(
 ) {
   try {
     // Get current user from session
-    const userId = await getCurrentUserId();
+    const userId = await getCurrentUserId(request);
     
     if (!userId) {
       return NextResponse.json(
