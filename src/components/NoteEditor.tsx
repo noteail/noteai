@@ -30,6 +30,8 @@ import {
   Copy,
   CheckCheck,
   Plus,
+  MoreHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
   Command,
@@ -81,19 +84,10 @@ const getAuthHeaders = (): HeadersInit => {
 
 // Predefined colors for new tags/categories
 const TAG_COLORS = [
-  "#ef4444", // red
-  "#f97316", // orange
-  "#eab308", // yellow
-  "#22c55e", // green
-  "#14b8a6", // teal
-  "#3b82f6", // blue
-  "#6366f1", // indigo
-  "#8b5cf6", // violet
-  "#ec4899", // pink
-  "#64748b", // slate
+  "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6",
+  "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899", "#64748b",
 ];
 
-// Default icons for categories
 const DEFAULT_CATEGORY_ICON = "folder";
 
 export function NoteEditor({
@@ -120,7 +114,7 @@ export function NoteEditor({
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastNoteIdRef = useRef<number>(note.id);
 
-  // Only reset local state when note ID changes (switching to different note)
+  // Only reset local state when note ID changes
   useEffect(() => {
     if (lastNoteIdRef.current !== note.id) {
       lastNoteIdRef.current = note.id;
@@ -129,13 +123,11 @@ export function NoteEditor({
       setLocalTags(note.tags || []);
       setViewMode("edit");
       setSaveStatus("idle");
-      // Clear any pending saves
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
     }
   }, [note.id, note.title, note.content, note.tags]);
 
-  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -148,7 +140,6 @@ export function NoteEditor({
     const trimmedName = newCategoryName.trim();
     if (!trimmedName) return;
     
-    // Check if category already exists
     const existingCategory = categories.find(
       (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
     );
@@ -159,7 +150,6 @@ export function NoteEditor({
     
     setIsCreatingCategory(true);
     try {
-      // Pick a random color
       const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
       
       const response = await fetch("/api/db/categories", {
@@ -176,12 +166,10 @@ export function NoteEditor({
         const data = await response.json();
         const newCategory = data.category;
         
-        // Notify parent to update categories list
         if (onCategoryCreated) {
           onCategoryCreated(newCategory);
         }
         
-        // Auto-select the new category
         onUpdate({ ...note, categoryId: newCategory.id });
         
         setNewCategoryName("");
@@ -204,7 +192,6 @@ export function NoteEditor({
     const trimmedName = newTagName.trim();
     if (!trimmedName) return;
     
-    // Check if tag already exists
     const existingTag = tags.find(
       (t) => t.name.toLowerCase() === trimmedName.toLowerCase()
     );
@@ -215,10 +202,8 @@ export function NoteEditor({
     
     setIsCreatingTag(true);
     try {
-      // Pick a random color
       const randomColor = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
       
-      // API will get userId from session - no need to send it!
       const response = await fetch("/api/db/tags", {
         method: "POST",
         headers: getAuthHeaders(),
@@ -232,12 +217,10 @@ export function NoteEditor({
         const data = await response.json();
         const newTag = data.tag;
         
-        // Notify parent to update tags list
         if (onTagCreated) {
           onTagCreated(newTag);
         }
         
-        // Auto-select the new tag
         const newTags = [...localTags, newTag.id];
         setLocalTags(newTags);
         onUpdate({ ...note, tags: newTags });
@@ -259,11 +242,9 @@ export function NoteEditor({
   // Auto-save function
   const triggerAutoSave = useCallback(
     (updatedTitle: string, updatedContent: string) => {
-      // Clear existing timeouts
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       if (statusTimeoutRef.current) clearTimeout(statusTimeoutRef.current);
       
-      // Show saving status
       setSaveStatus("saving");
       
       saveTimeoutRef.current = setTimeout(() => {
@@ -273,10 +254,8 @@ export function NoteEditor({
           content: updatedContent,
         });
         
-        // Show saved status
         setSaveStatus("saved");
         
-        // Reset to idle after 2 seconds
         statusTimeoutRef.current = setTimeout(() => {
           setSaveStatus("idle");
         }, 2000);
@@ -349,17 +328,14 @@ export function NoteEditor({
       ? currentTags.filter((t) => t !== tagId)
       : [...currentTags, tagId];
     
-    // Update local state immediately for visual feedback
     setLocalTags(newTags);
-    
-    // Then update parent
     onUpdate({ ...note, tags: newTags });
   };
 
   const currentCategory = categories.find((c) => c.id === note.categoryId);
   const noteTags = tags.filter((t) => (localTags || []).includes(t.id));
 
-  // Preview component to avoid duplication
+  // Preview component
   const PreviewContent = () => {
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -404,7 +380,6 @@ export function NoteEditor({
               const match = /language-(\w+)/.exec(className || "");
               const codeString = String(children).replace(/\n$/, "");
               
-              // Inline code
               if (!match) {
                 return (
                   <code className="px-1.5 py-0.5 bg-muted rounded text-sm font-mono text-primary">
@@ -413,7 +388,6 @@ export function NoteEditor({
                 );
               }
               
-              // Code block with syntax highlighting
               const language = match[1];
               
               return (
@@ -494,24 +468,24 @@ export function NoteEditor({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b bg-muted/30 flex-wrap">
+      {/* Mobile-optimized Toolbar */}
+      <div className="flex items-center gap-1 px-2 md:px-4 py-2 border-b bg-muted/30 overflow-x-auto">
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg mr-2">
+        <div className="flex items-center gap-0.5 p-0.5 bg-muted rounded-lg shrink-0">
           <Button
             variant={viewMode === "edit" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("edit")}
-            className="h-7 px-3 text-xs"
+            className="h-7 px-2 md:px-3 text-xs"
           >
-            <Edit3 className="w-3.5 h-3.5 mr-1.5" />
-            Edit
+            <Edit3 className="w-3.5 h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Edit</span>
           </Button>
           <Button
             variant={viewMode === "split" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("split")}
-            className="h-7 px-3 text-xs"
+            className="h-7 px-2 md:px-3 text-xs hidden md:flex"
             title="Side by side view"
           >
             <Columns className="w-3.5 h-3.5 mr-1.5" />
@@ -521,121 +495,151 @@ export function NoteEditor({
             variant={viewMode === "preview" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setViewMode("preview")}
-            className="h-7 px-3 text-xs"
+            className="h-7 px-2 md:px-3 text-xs"
           >
-            <Eye className="w-3.5 h-3.5 mr-1.5" />
-            Preview
+            <Eye className="w-3.5 h-3.5 md:mr-1.5" />
+            <span className="hidden md:inline">Preview</span>
           </Button>
         </div>
         
-        {/* Auto-save Status Indicator */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-2">
+        {/* Auto-save Status */}
+        <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 mx-2">
           {saveStatus === "saving" && (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span>Saving...</span>
+              <span className="hidden md:inline">Saving...</span>
             </>
           )}
           {saveStatus === "saved" && (
             <>
               <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">Saved</span>
+              <span className="hidden md:inline text-green-600 dark:text-green-400">Saved</span>
             </>
           )}
           {saveStatus === "idle" && (
-            <>
-              <CheckCircle2 className="w-3.5 h-3.5 opacity-50" />
-              <span className="opacity-70">Auto-save</span>
-            </>
+            <CheckCircle2 className="w-3.5 h-3.5 opacity-50" />
           )}
         </div>
-        
-        <div className="w-px h-6 bg-border mx-1" />
 
         {(viewMode === "edit" || viewMode === "split") && (
           <>
-            <div className="flex items-center gap-1 mr-2">
+            <div className="w-px h-6 bg-border mx-1 shrink-0 hidden sm:block" />
+
+            {/* Basic formatting - always visible */}
+            <div className="flex items-center gap-0.5 shrink-0">
               <ToolbarButton icon={Bold} onClick={() => insertMarkdown("**", "**")} title="Bold" />
               <ToolbarButton icon={Italic} onClick={() => insertMarkdown("*", "*")} title="Italic" />
-              <ToolbarButton icon={Code} onClick={() => insertMarkdown("`", "`")} title="Inline Code" />
+              <ToolbarButton icon={Code} onClick={() => insertMarkdown("`", "`")} title="Code" />
             </div>
             
-            <div className="w-px h-6 bg-border mx-1" />
-            
-            <div className="flex items-center gap-1 mr-2">
-              <ToolbarButton icon={Heading1} onClick={() => insertMarkdown("# ")} title="Heading 1" />
-              <ToolbarButton icon={Heading2} onClick={() => insertMarkdown("## ")} title="Heading 2" />
-              <ToolbarButton icon={Heading3} onClick={() => insertMarkdown("### ")} title="Heading 3" />
+            {/* Headings - visible on tablet+ */}
+            <div className="hidden sm:flex items-center gap-0.5 shrink-0">
+              <div className="w-px h-6 bg-border mx-1" />
+              <ToolbarButton icon={Heading1} onClick={() => insertMarkdown("# ")} title="H1" />
+              <ToolbarButton icon={Heading2} onClick={() => insertMarkdown("## ")} title="H2" />
+              <ToolbarButton icon={Heading3} onClick={() => insertMarkdown("### ")} title="H3" />
             </div>
             
-            <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
-            
-            <div className="hidden sm:flex items-center gap-1 mr-2">
-              <ToolbarButton icon={List} onClick={() => insertMarkdown("- ")} title="Bullet List" />
-              <ToolbarButton icon={ListOrdered} onClick={() => insertMarkdown("1. ")} title="Numbered List" />
+            {/* Lists - visible on medium+ */}
+            <div className="hidden md:flex items-center gap-0.5 shrink-0">
+              <div className="w-px h-6 bg-border mx-1" />
+              <ToolbarButton icon={List} onClick={() => insertMarkdown("- ")} title="List" />
+              <ToolbarButton icon={ListOrdered} onClick={() => insertMarkdown("1. ")} title="Numbered" />
               <ToolbarButton icon={Quote} onClick={() => insertMarkdown("> ")} title="Quote" />
             </div>
             
-            <div className="w-px h-6 bg-border mx-1 hidden md:block" />
-            
-            <div className="hidden md:flex items-center gap-1 mr-2">
+            {/* Links & Images - visible on large+ */}
+            <div className="hidden lg:flex items-center gap-0.5 shrink-0">
+              <div className="w-px h-6 bg-border mx-1" />
               <ToolbarButton icon={Link} onClick={() => insertMarkdown("[", "](url)")} title="Link" />
               <ToolbarButton icon={Image} onClick={() => insertMarkdown("![alt](", ")")} title="Image" />
             </div>
             
-            <div className="w-px h-6 bg-border mx-1 hidden lg:block" />
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => insertMarkdown("```\n", "\n```")}
-              className="text-xs hidden lg:flex"
-            >
-              <Code className="w-3.5 h-3.5 mr-1" />
-              Code Block
-            </Button>
+            {/* More options dropdown for mobile */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="w-8 h-8 shrink-0 sm:hidden">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Formatting</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => insertMarkdown("# ")}>
+                  <Heading1 className="w-4 h-4 mr-2" /> Heading 1
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertMarkdown("## ")}>
+                  <Heading2 className="w-4 h-4 mr-2" /> Heading 2
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertMarkdown("### ")}>
+                  <Heading3 className="w-4 h-4 mr-2" /> Heading 3
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => insertMarkdown("- ")}>
+                  <List className="w-4 h-4 mr-2" /> Bullet List
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertMarkdown("1. ")}>
+                  <ListOrdered className="w-4 h-4 mr-2" /> Numbered List
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertMarkdown("> ")}>
+                  <Quote className="w-4 h-4 mr-2" /> Quote
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => insertMarkdown("[", "](url)")}>
+                  <Link className="w-4 h-4 mr-2" /> Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => insertMarkdown("```\n", "\n```")}>
+                  <Code className="w-4 h-4 mr-2" /> Code Block
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         )}
         
         <div className="flex-1" />
         
+        {/* AI Button - Hidden on mobile (available in bottom nav) */}
         <Button
           variant="default"
           size="sm"
           onClick={handleAIClick}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+          className="hidden md:flex bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shrink-0"
         >
           <Sparkles className="w-4 h-4 mr-2" />
           AI Assist
         </Button>
       </div>
 
-      {/* Title & Meta */}
-      <div className="px-6 pt-4 space-y-3">
+      {/* Title & Meta - Mobile optimized */}
+      <div className="px-3 md:px-6 pt-3 md:pt-4 space-y-2 md:space-y-3">
         <Input
           value={title}
           onChange={handleTitleChange}
           placeholder="Note title..."
-          className="text-2xl font-bold border-0 px-0 h-auto focus-visible:ring-0 bg-transparent"
+          className="text-xl md:text-2xl font-bold border-0 px-0 h-auto focus-visible:ring-0 bg-transparent"
           readOnly={viewMode === "preview"}
         />
         
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Meta buttons - Scrollable on mobile */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-3 px-3 md:mx-0 md:px-0 md:pb-0 md:flex-wrap">
           <Button
             variant="ghost"
             size="sm"
             onClick={toggleFavorite}
-            className={note.isFavorite ? "text-amber-500" : "text-muted-foreground"}
+            className={`shrink-0 h-8 ${note.isFavorite ? "text-amber-500" : "text-muted-foreground"}`}
           >
             <Star className={`w-4 h-4 mr-1 ${note.isFavorite ? "fill-current" : ""}`} />
-            {note.isFavorite ? "Favorited" : "Add to Favorites"}
+            <span className="text-xs">{note.isFavorite ? "Favorited" : "Favorite"}</span>
           </Button>
           
           <Popover open={isCategoryOpen} onOpenChange={setIsCategoryOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Button variant="ghost" size="sm" className="text-muted-foreground shrink-0 h-8">
                 <Folder className="w-4 h-4 mr-1" />
-                {currentCategory ? currentCategory.name : "No Category"}
+                <span className="text-xs max-w-[100px] truncate">
+                  {currentCategory ? currentCategory.name : "Category"}
+                </span>
+                <ChevronDown className="w-3 h-3 ml-1" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0 w-56" align="start">
@@ -644,7 +648,6 @@ export function NoteEditor({
                 <CommandList>
                   <CommandEmpty>No category found.</CommandEmpty>
                   
-                  {/* Create New Category Section */}
                   <CommandGroup heading="Create New">
                     <div className="px-2 py-1.5">
                       <div className="flex items-center gap-1.5">
@@ -713,16 +716,16 @@ export function NoteEditor({
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="text-muted-foreground">
+              <Button variant="ghost" size="sm" className="text-muted-foreground shrink-0 h-8">
                 <Tag className="w-4 h-4 mr-1" />
-                Add Tags
+                <span className="text-xs">Tags</span>
+                <ChevronDown className="w-3 h-3 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="start">
               <DropdownMenuLabel className="text-xs">Select Tags</DropdownMenuLabel>
               <DropdownMenuSeparator />
               
-              {/* Create New Tag Section */}
               <div className="px-2 py-1.5">
                 <div className="flex items-center gap-1.5">
                   <Input
@@ -762,7 +765,7 @@ export function NoteEditor({
               <DropdownMenuSeparator />
               
               {tags.length === 0 ? (
-                <p className="text-sm text-muted-foreground px-2 py-1.5">No tags yet. Create one above!</p>
+                <p className="text-sm text-muted-foreground px-2 py-1.5">No tags yet</p>
               ) : (
                 tags.map((tag) => {
                   const isSelected = (localTags || []).includes(tag.id);
@@ -795,8 +798,9 @@ export function NoteEditor({
             </DropdownMenuContent>
           </DropdownMenu>
           
+          {/* Tags badges - show inline on larger screens */}
           {noteTags.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
+            <div className="hidden md:flex items-center gap-1 flex-wrap">
               {noteTags.map((tag) => (
                 <Badge
                   key={tag.id}
@@ -811,10 +815,27 @@ export function NoteEditor({
             </div>
           )}
         </div>
+        
+        {/* Tags on mobile - separate row */}
+        {noteTags.length > 0 && (
+          <div className="flex md:hidden items-center gap-1 flex-wrap">
+            {noteTags.map((tag) => (
+              <Badge
+                key={tag.id}
+                variant="secondary"
+                className="text-xs cursor-pointer hover:bg-destructive/20"
+                style={{ borderColor: tag.color }}
+                onClick={() => toggleTag(tag.id)}
+              >
+                #{tag.name}
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content Editor / Preview / Split */}
-      <div className="flex-1 px-6 py-4 overflow-hidden">
+      <div className="flex-1 px-3 md:px-6 py-3 md:py-4 overflow-hidden">
         {viewMode === "edit" && (
           <Textarea
             id="note-content"
@@ -833,7 +854,6 @@ export function NoteEditor({
         
         {viewMode === "split" && (
           <div className="flex h-full gap-4">
-            {/* Editor Panel */}
             <div className="flex-1 flex flex-col min-w-0 border rounded-lg overflow-hidden">
               <div className="px-3 py-1.5 bg-muted/50 border-b text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Edit3 className="w-3 h-3" />
@@ -848,7 +868,6 @@ export function NoteEditor({
               />
             </div>
             
-            {/* Preview Panel */}
             <div className="flex-1 flex flex-col min-w-0 border rounded-lg overflow-hidden">
               <div className="px-3 py-1.5 bg-muted/50 border-b text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <Eye className="w-3 h-3" />
@@ -880,7 +899,7 @@ function ToolbarButton({
       size="icon"
       onClick={onClick}
       title={title}
-      className="w-8 h-8"
+      className="w-8 h-8 shrink-0"
     >
       <Icon className="w-4 h-4" />
     </Button>

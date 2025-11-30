@@ -26,7 +26,9 @@ import {
   Code,
   Book,
   Crown,
-  Zap,
+  ChevronLeft,
+  Home,
+  PenSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +182,9 @@ function UsageIndicator() {
   );
 }
 
+// Mobile View States
+type MobileView = "list" | "editor";
+
 // Inner dashboard component that uses Autumn hooks
 function DashboardContent() {
   const router = useRouter();
@@ -192,9 +197,11 @@ function DashboardContent() {
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiSelectedText, setAISelectedText] = useState("");
+  const [mobileView, setMobileView] = useState<MobileView>("list");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   
   // Track if initial load happened
   const initialLoadDone = useRef(false);
@@ -353,7 +360,6 @@ function DashboardContent() {
         body: JSON.stringify({
           title: "Untitled Note",
           content: "Start writing here...",
-          // userId removed - API will get it from session
           categoryId: activeFilter.startsWith("category-")
             ? parseInt(activeFilter.replace("category-", ""))
             : null,
@@ -362,9 +368,9 @@ function DashboardContent() {
 
       if (response.ok) {
         const data = await response.json();
-        // Add new note to the beginning of the list (optimistic update)
         setNotes(prev => [data.note, ...prev]);
         setSelectedNote(data.note);
+        setMobileView("editor");
         
         // Track note creation
         await track({ featureId: "notes", value: 1, idempotencyKey: `note-${data.note.id}` });
@@ -395,7 +401,6 @@ function DashboardContent() {
 
       if (response.ok) {
         const data = await response.json();
-        // Normalize tags from objects to IDs if needed
         const normalizedNote = {
           ...data.note,
           tags: Array.isArray(data.note.tags)
@@ -404,7 +409,6 @@ function DashboardContent() {
               )
             : [],
         };
-        // Update the note in place (optimistic update)
         setNotes(prev => prev.map(n => n.id === normalizedNote.id ? normalizedNote : n));
         setSelectedNote(normalizedNote);
       }
@@ -420,10 +424,10 @@ function DashboardContent() {
         headers: getAuthHeaders(),
       });
       
-      // Remove from local state (optimistic update)
       setNotes(prev => prev.filter(n => n.id !== noteId));
       if (selectedNote?.id === noteId) {
         setSelectedNote(null);
+        setMobileView("list");
       }
     } catch (error) {
       console.error("Failed to delete note:", error);
@@ -439,7 +443,6 @@ function DashboardContent() {
   };
 
   const openAIAssistant = async (text: string = "") => {
-    // Check AI request allowance
     if (!customerLoading) {
       const { data } = await check({ featureId: "ai_requests", requiredBalance: 1 });
       if (!data?.allowed) {
@@ -462,11 +465,19 @@ function DashboardContent() {
       const updatedContent = selectedNote.content + "\n\n" + text;
       handleNoteUpdate({ ...selectedNote, content: updatedContent });
       
-      // Track AI usage
       await track({ featureId: "ai_requests", value: 1, idempotencyKey: `ai-${Date.now()}` });
       await refetchCustomer();
     }
     setIsAIModalOpen(false);
+  };
+
+  const handleNoteSelect = (note: Note) => {
+    setSelectedNote(note);
+    setMobileView("editor");
+  };
+
+  const handleBackToList = () => {
+    setMobileView("list");
   };
 
   const formatDate = (date: Date | string) => {
@@ -517,7 +528,7 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-[100dvh] bg-background overflow-hidden">
       {/* Mobile sidebar overlay */}
       {isSidebarOpen && (
         <div
@@ -528,7 +539,7 @@ function DashboardContent() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -574,31 +585,31 @@ function DashboardContent() {
                   icon={FileText}
                   label="All Notes"
                   active={activeFilter === "all"}
-                  onClick={() => setActiveFilter("all")}
+                  onClick={() => { setActiveFilter("all"); setIsSidebarOpen(false); }}
                 />
                 <NavItem
                   icon={Star}
                   label="Favorites"
                   active={activeFilter === "favorites"}
-                  onClick={() => setActiveFilter("favorites")}
+                  onClick={() => { setActiveFilter("favorites"); setIsSidebarOpen(false); }}
                 />
                 <NavItem
                   icon={Clock}
                   label="Recent"
                   active={activeFilter === "recent"}
-                  onClick={() => setActiveFilter("recent")}
+                  onClick={() => { setActiveFilter("recent"); setIsSidebarOpen(false); }}
                 />
                 <NavItem
                   icon={Archive}
                   label="Archived"
                   active={activeFilter === "archived"}
-                  onClick={() => setActiveFilter("archived")}
+                  onClick={() => { setActiveFilter("archived"); setIsSidebarOpen(false); }}
                 />
                 <NavItem
                   icon={Trash2}
                   label="Trash"
                   active={activeFilter === "trash"}
-                  onClick={() => setActiveFilter("trash")}
+                  onClick={() => { setActiveFilter("trash"); setIsSidebarOpen(false); }}
                 />
               </div>
 
@@ -615,7 +626,7 @@ function DashboardContent() {
                       icon={IconComponent}
                       label={category.name}
                       active={activeFilter === `category-${category.id}`}
-                      onClick={() => setActiveFilter(`category-${category.id}`)}
+                      onClick={() => { setActiveFilter(`category-${category.id}`); setIsSidebarOpen(false); }}
                       color={category.color}
                     />
                   );
@@ -634,7 +645,7 @@ function DashboardContent() {
                       icon={Tag}
                       label={`#${tag.name}`}
                       active={activeFilter === `tag-${tag.id}`}
-                      onClick={() => setActiveFilter(`tag-${tag.id}`)}
+                      onClick={() => { setActiveFilter(`tag-${tag.id}`); setIsSidebarOpen(false); }}
                       color={tag.color}
                     />
                   ))}
@@ -660,13 +671,13 @@ function DashboardContent() {
                       {session.user.name?.charAt(0).toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 text-left">
+                  <div className="flex-1 text-left min-w-0">
                     <p className="text-sm font-medium truncate">{session.user.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {session.user.email}
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -692,9 +703,60 @@ function DashboardContent() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar */}
-        <header className="flex items-center gap-4 px-4 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
+        {/* Mobile Search Bar (overlay) */}
+        {isSearchOpen && (
+          <div className="fixed inset-0 z-50 bg-background md:hidden">
+            <div className="flex items-center gap-2 p-3 border-b">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSearchOpen(false)}
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <Input
+                placeholder="Search notes..."
+                className="flex-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {/* Search Results */}
+            <ScrollArea className="flex-1">
+              <div className="p-2">
+                {notes.map((note) => (
+                  <NoteCard
+                    key={note.id}
+                    note={note}
+                    isSelected={false}
+                    onClick={() => {
+                      handleNoteSelect(note);
+                      setIsSearchOpen(false);
+                    }}
+                    onToggleFavorite={() => handleToggleFavorite(note)}
+                    onArchive={() => handleArchiveNote(note)}
+                    onDelete={() => handleDeleteNote(note.id)}
+                    formatDate={formatDate}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Desktop Top Bar */}
+        <header className="hidden md:flex items-center gap-4 px-4 h-14 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <Button
             variant="ghost"
             size="icon"
@@ -720,22 +782,57 @@ function DashboardContent() {
             variant="outline"
             size="sm"
             onClick={() => openAIAssistant()}
-            className="hidden sm:flex"
           >
             <Sparkles className="w-4 h-4 mr-2" />
             AI Assistant
           </Button>
         </header>
 
+        {/* Mobile Header for Editor View */}
+        {mobileView === "editor" && (
+          <header className="flex md:hidden items-center gap-2 px-3 h-14 border-b bg-background">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackToList}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <span className="flex-1 font-medium truncate text-sm">
+              {selectedNote?.title || "Note"}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openAIAssistant()}
+            >
+              <Sparkles className="w-5 h-5" />
+            </Button>
+          </header>
+        )}
+
         {/* Content Area */}
-        <div className="flex-1 flex min-h-0">
-          {/* Notes List */}
-          <div className="w-80 border-r bg-muted/30 flex flex-col">
-            <div className="p-4 border-b">
-              <h2 className="font-semibold">{getFilterTitle()}</h2>
-              <p className="text-sm text-muted-foreground">
-                {notes.length} note{notes.length !== 1 ? "s" : ""}
-              </p>
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Notes List - Hidden on mobile when viewing editor */}
+          <div className={`w-full md:w-80 border-r bg-muted/30 flex flex-col ${
+            mobileView === "editor" ? "hidden md:flex" : "flex"
+          }`}>
+            {/* List Header */}
+            <div className="p-4 border-b flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">{getFilterTitle()}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {notes.length} note{notes.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="md:hidden"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
             </div>
 
             <ScrollArea className="flex-1">
@@ -756,6 +853,10 @@ function DashboardContent() {
                   <p className="text-sm mt-1">
                     Create a new note to get started
                   </p>
+                  <Button className="mt-4" onClick={handleCreateNote}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Note
+                  </Button>
                 </div>
               ) : (
                 <div className="p-2">
@@ -764,7 +865,7 @@ function DashboardContent() {
                       key={note.id}
                       note={note}
                       isSelected={selectedNote?.id === note.id}
-                      onClick={() => setSelectedNote(note)}
+                      onClick={() => handleNoteSelect(note)}
                       onToggleFavorite={() => handleToggleFavorite(note)}
                       onArchive={() => handleArchiveNote(note)}
                       onDelete={() => handleDeleteNote(note.id)}
@@ -776,8 +877,10 @@ function DashboardContent() {
             </ScrollArea>
           </div>
 
-          {/* Editor */}
-          <div className="flex-1 flex flex-col min-w-0">
+          {/* Editor - Hidden on mobile when viewing list */}
+          <div className={`flex-1 flex flex-col min-w-0 ${
+            mobileView === "list" ? "hidden md:flex" : "flex"
+          }`}>
             {selectedNote ? (
               <NoteEditor
                 note={selectedNote}
@@ -794,7 +897,7 @@ function DashboardContent() {
               />
             ) : (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
+                <div className="text-center p-4">
                   <FileText className="w-16 h-16 mx-auto mb-4 opacity-30" />
                   <p className="text-lg font-medium">Select a note</p>
                   <p className="text-sm mt-1">
@@ -809,6 +912,45 @@ function DashboardContent() {
             )}
           </div>
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background border-t safe-area-bottom">
+          <div className="flex items-center justify-around h-16">
+            <BottomNavItem
+              icon={Home}
+              label="Notes"
+              active={mobileView === "list" && activeFilter === "all"}
+              onClick={() => {
+                setActiveFilter("all");
+                setMobileView("list");
+              }}
+            />
+            <BottomNavItem
+              icon={Search}
+              label="Search"
+              active={isSearchOpen}
+              onClick={() => setIsSearchOpen(true)}
+            />
+            <button
+              onClick={handleCreateNote}
+              className="flex items-center justify-center w-14 h-14 -mt-6 rounded-full bg-primary text-primary-foreground shadow-lg active:scale-95 transition-transform"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+            <BottomNavItem
+              icon={Sparkles}
+              label="AI"
+              active={isAIModalOpen}
+              onClick={() => openAIAssistant()}
+            />
+            <BottomNavItem
+              icon={Menu}
+              label="Menu"
+              active={isSidebarOpen}
+              onClick={() => setIsSidebarOpen(true)}
+            />
+          </div>
+        </nav>
       </div>
 
       {/* AI Assistant Modal */}
@@ -865,7 +1007,7 @@ function NavItem({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
         active
           ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           : "text-sidebar-foreground hover:bg-sidebar-accent/50"
@@ -876,6 +1018,31 @@ function NavItem({
         style={color ? { color } : undefined}
       />
       <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+// Bottom Navigation Item Component
+function BottomNavItem({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors ${
+        active ? "text-primary" : "text-muted-foreground"
+      }`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="text-[10px] font-medium">{label}</span>
     </button>
   );
 }
@@ -914,21 +1081,21 @@ function NoteCard({
   return (
     <div
       onClick={onClick}
-      className={`group p-3 rounded-lg cursor-pointer transition-colors mb-1 ${
+      className={`group p-3 rounded-lg cursor-pointer transition-colors mb-1 active:scale-[0.98] ${
         isSelected
           ? "bg-accent"
-          : "hover:bg-accent/50"
+          : "hover:bg-accent/50 active:bg-accent/70"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium text-sm truncate flex-1">{note.title}</h3>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 md:transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onToggleFavorite();
             }}
-            className="p-1 hover:bg-background rounded"
+            className="p-1.5 hover:bg-background rounded"
           >
             <Heart
               className={`w-3.5 h-3.5 ${
@@ -940,7 +1107,7 @@ function NoteCard({
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-              <button className="p-1 hover:bg-background rounded">
+              <button className="p-1.5 hover:bg-background rounded">
                 <MoreVertical className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
@@ -963,9 +1130,14 @@ function NoteCard({
       <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
         {getPreview(note.content) || "No content"}
       </p>
-      <p className="text-xs text-muted-foreground mt-2">
-        {formatDate(note.updatedAt)}
-      </p>
+      <div className="flex items-center gap-2 mt-2">
+        {note.isFavorite && (
+          <Heart className="w-3 h-3 fill-red-500 text-red-500 md:hidden" />
+        )}
+        <p className="text-xs text-muted-foreground">
+          {formatDate(note.updatedAt)}
+        </p>
+      </div>
     </div>
   );
 }
