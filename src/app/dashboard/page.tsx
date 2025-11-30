@@ -31,6 +31,7 @@ import {
   PenSquare,
   LayoutTemplate,
   Command,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -238,6 +239,11 @@ function DashboardContent() {
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
+  
+  // Collapsible sections state
+  const [isQuickAccessOpen, setIsQuickAccessOpen] = useState(true);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(true);
+  const [isTagsOpen, setIsTagsOpen] = useState(true);
   
   // Track if initial load happened
   const initialLoadDone = useRef(false);
@@ -742,10 +748,11 @@ function DashboardContent() {
           <ScrollArea className="flex-1 px-3">
             <div className="space-y-1">
               {/* Quick Access */}
-              <div className="py-2">
-                <p className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Quick Access
-                </p>
+              <CollapsibleSection
+                title="Quick Access"
+                isOpen={isQuickAccessOpen}
+                onToggle={() => setIsQuickAccessOpen(!isQuickAccessOpen)}
+              >
                 <NavItem
                   icon={FileText}
                   label="All Notes"
@@ -776,34 +783,38 @@ function DashboardContent() {
                   active={activeFilter === "trash"}
                   onClick={() => { setActiveFilter("trash"); setIsSidebarOpen(false); }}
                 />
-              </div>
+              </CollapsibleSection>
 
               {/* Categories */}
-              <div className="py-2">
-                <p className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Categories
-                </p>
-                {categories.map((category) => {
-                  const IconComponent = categoryIcons[category.icon] || Folder;
-                  return (
-                    <NavItem
-                      key={category.id}
-                      icon={IconComponent}
-                      label={category.name}
-                      active={activeFilter === `category-${category.id}`}
-                      onClick={() => { setActiveFilter(`category-${category.id}`); setIsSidebarOpen(false); }}
-                      color={category.color}
-                    />
-                  );
-                })}
-              </div>
+              {categories.length > 0 && (
+                <CollapsibleSection
+                  title={`Categories (${categories.length})`}
+                  isOpen={isCategoriesOpen}
+                  onToggle={() => setIsCategoriesOpen(!isCategoriesOpen)}
+                >
+                  {categories.map((category) => {
+                    const IconComponent = categoryIcons[category.icon] || Folder;
+                    return (
+                      <NavItem
+                        key={category.id}
+                        icon={IconComponent}
+                        label={category.name}
+                        active={activeFilter === `category-${category.id}`}
+                        onClick={() => { setActiveFilter(`category-${category.id}`); setIsSidebarOpen(false); }}
+                        color={category.color}
+                      />
+                    );
+                  })}
+                </CollapsibleSection>
+              )}
 
               {/* Tags */}
               {tags.length > 0 && (
-                <div className="py-2">
-                  <p className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    Tags
-                  </p>
+                <CollapsibleSection
+                  title={`Tags (${tags.length})`}
+                  isOpen={isTagsOpen}
+                  onToggle={() => setIsTagsOpen(!isTagsOpen)}
+                >
                   {tags.slice(0, 8).map((tag) => (
                     <NavItem
                       key={tag.id}
@@ -814,7 +825,12 @@ function DashboardContent() {
                       color={tag.color}
                     />
                   ))}
-                </div>
+                  {tags.length > 8 && (
+                    <p className="px-3 py-1.5 text-xs text-muted-foreground">
+                      +{tags.length - 8} more tags
+                    </p>
+                  )}
+                </CollapsibleSection>
               )}
             </div>
           </ScrollArea>
@@ -1187,6 +1203,42 @@ export default function DashboardPage() {
     >
       <DashboardContent />
     </AutumnProvider>
+  );
+}
+
+// Collapsible Section Component
+function CollapsibleSection({
+  title,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="py-2">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors group"
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+            isOpen ? "" : "-rotate-90"
+          }`}
+        />
+      </button>
+      <div
+        className={`overflow-hidden transition-all duration-200 ${
+          isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
   );
 }
 
