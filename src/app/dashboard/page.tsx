@@ -891,9 +891,11 @@ function DashboardContent() {
                     Upgrade Plan
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  <User className="w-4 h-4 mr-2" />
-                  Profile Settings
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <User className="w-4 h-4 mr-2" />
+                    Profile Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
